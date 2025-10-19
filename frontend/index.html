@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>CMC Analytics Dashboard</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+    <!-- Plotly CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+
+    <style>
+        :root {
+            --bg: #0b1220;
+            --card: #0f1724;
+            --muted: #9aa7b2;
+            --accent: #7c3aed;
+            --success: #16a34a;
+            --danger: #ef4444;
+            --glass: rgba(255, 255, 255, 0.03);
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+        }
+
+        body {
+            margin: 0;
+            background: linear-gradient(180deg, #071021 0%, #071827 100%);
+            color: #e6eef6;
+            min-height: 100vh;
+        }
+
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 20px;
+            background: linear-gradient(90deg, rgba(124, 58, 237, 0.12), rgba(7, 18, 36, 0));
+            backdrop-filter: blur(6px);
+        }
+
+        .brand {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #7c3aed, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white
+        }
+
+        nav {
+            display: flex;
+            gap: 12px;
+            padding-left: 8px
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--muted);
+            border: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer
+        }
+
+        .nav-btn.active {
+            color: white;
+            background: var(--glass);
+            box-shadow: 0 4px 14px rgba(2, 6, 23, 0.6)
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+
+        .btn {
+            border: 0;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #0b2330;
+            color: #dff4ff;
+            cursor: pointer
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 18px auto;
+            padding: 16px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 16px
+        }
+
+        .card {
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+            padding: 14px;
+            border-radius: 10px;
+            box-shadow: 0 6px 20px rgba(2, 6, 23, 0.6)
+        }
+
+        .col-span-8 {
+            grid-column: span 8
+        }
+
+        .col-span-4 {
+            grid-column: span 4
+        }
+
+        .full {
+            grid-column: 1/-1
+        }
+
+        .stats {
+            display: flex;
+            gap: 12px
+        }
+
+        .stat {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, rgba(124, 58, 237, 0.06), rgba(6, 182, 212, 0.03));
+            text-align: left
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px
+        }
+
+        th,
+        td {
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03)
+        }
+
+        th {
+            color: var(--muted);
+            font-size: 12px;
+            position: sticky;
+            top: 0;
+            background: transparent
+        }
+
+        .positive {
+            color: var(--success)
+        }
+
+        .negative {
+            color: var(--danger)
+        }
+
+        .small {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .plot-wrap {
+            height: 520px
+        }
+
+        .center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: var(--muted)
+        }
+
+        footer {
+            text-align: center;
+            color: var(--muted);
+            padding: 14px;
+            margin-top: 10px
+        }
+
+        @media(max-width:900px) {
+            .col-span-8 {
+                grid-column: 1/-1
+            }
+
+            .col-span-4 {
+                grid-column: 1/-1
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="brand">
+            <div class="logo">CMC</div>
+            <div>
+                <div style="font-weight:600">CMC Analytics</div>
+                <div class="small">PCA • UMAP • DuckDB • FastAPI</div>
+            </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px">
+            <nav id="nav">
+                <button class="nav-btn active" data-target="coins">Coins</button>
+                <button class="nav-btn" data-target="umap">UMAP</button>
+                <button class="nav-btn" data-target="plot">Plot</button>
+                <button class="nav-btn" data-target="info">System</button>
+            </nav>
+
+            <div class="controls">
+                <div id="lastUpdated" class="small">Last updated: —</div>
+                <button id="refreshBtn" class="btn">Refresh</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="coins" class="card full">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <h3>Top Cryptocurrencies</h3>
+                <div class="small">Showing latest snapshot</div>
+            </div>
+
+            <div class="stats" style="margin-top:12px;margin-bottom:12px">
+                <div class="stat">
+                    <div class="small">Coins Loaded</div>
+                    <div id="totalCoins" style="font-weight:700;font-size:18px">—</div>
+                </div>
+                <div class="stat">
+                    <div class="small">Total Market Cap (USD)</div>
+                    <div id="totalMarket" style="font-weight:700;font-size:18px">—</div>
+                </div>
+                <div class="stat">
+                    <div class="small">24h Volume (USD)</div>
+                    <div id="totalVolume" style="font-weight:700;font-size:18px">—</div>
+                </div>
+            </div>
+
+            <div style="overflow:auto;max-height:520px">
+                <table id="coinsTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th style="text-align:right">Price (USD)</th>
+                            <th style="text-align:right">24h%</th>
+                            <th style="text-align:right">7d%</th>
+                            <th style="text-align:right">Market Cap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="center">Loading…</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section id="umap" class="card col-span-8" style="display:none">
+            <h3>UMAP Scatter</h3>
+            <div id="umapPlot" class="plot-wrap"></div>
+            <div class="small" style="margin-top:8px">Hover points for details. Color = CMC Rank (lower is larger market
+                cap).</div>
+        </section>
+
+        <section id="plot" class="card col-span-4" style="display:none">
+            <h3>Static UMAP Preview</h3>
+            <div id="plotArea" style="margin-top:12px">
+                <img id="plotImg" src="" alt="UMAP preview" style="max-width:100%;border-radius:8px;display:none" />
+                <div id="plotFallback" class="center">No static plot available</div>
+            </div>
+        </section>
+
+        <section id="info" class="card full" style="display:none">
+            <h3>System Info</h3>
+            <div style="margin-top:8px">
+                <div><strong>API status:</strong> <span id="apiStatus" class="small">—</span></div>
+                <div><strong>Last pipeline run:</strong> <span id="pipelineStatus" class="small">—</span></div>
+                <div style="margin-top:8px"><strong>Notes:</strong>
+                    <ul class="small">
+                        <li>Data updates every 10 hours via MCP.</li>
+                        <li>Click refresh to fetch latest snapshot immediately.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <footer>Project 5 — CoinMarketCap DB & Analytics (Snapshot UI)</footer>
+    </main>
+
+    <script>
+        /* ============= CONFIG ============= */
+        const API_BASE = "http://127.0.0.1:8000"; // <-- change to your backend host (EC2 IP or domain)
+        const COINS_ENDPOINT = `${API_BASE}/coins?limit=200`;
+        const EMBED_ENDPOINT = `${API_BASE}/analytics/embeddings?limit=500`;
+        const PLOT_ENDPOINT = `${API_BASE}/plot`;
+        const STATUS_ENDPOINT = `${API_BASE}/`;
+
+        /* ============= UI Helpers ============= */
+        const el = id => document.getElementById(id);
+        const formatMoney = n => {
+            if (!n && n !== 0) return "—";
+            return (Number(n) || 0).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+        };
+
+        /* ============= Navigation ============= */
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.querySelectorAll('main section').forEach(s => s.style.display = 'none');
+                const target = btn.getAttribute('data-target');
+                document.getElementById(target).style.display = (target === 'coins' ? 'block' : '');
+                if (target === 'coins') document.getElementById('coins').style.display = 'block';
+                else document.getElementById(target).style.display = 'block';
+            });
+        });
+
+        /* ============= Fetch & Render ============= */
+        async function fetchCoins() {
+            try {
+                const r = await fetch(COINS_ENDPOINT);
+                if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+                const js = await r.json();
+                return js.rows || [];
+            } catch (err) {
+                console.error("fetchCoins:", err);
+                return null;
+            }
+        }
+
+        async function fetchEmbeddings() {
+            try {
+                const r = await fetch(EMBED_ENDPOINT);
+                if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+                const js = await r.json();
+                return js.embeddings || [];
+            } catch (err) {
+                console.error("fetchEmbeddings:", err);
+                return null;
+            }
+        }
+
+        async function fetchPlot() {
+            try {
+                const r = await fetch(PLOT_ENDPOINT);
+                if (!r.ok) throw new Error("no plot");
+                return PLOT_ENDPOINT;
+            } catch (err) {
+                console.warn("fetchPlot:", err);
+                return null;
+            }
+        }
+
+        async function fetchStatus() {
+            try {
+                const r = await fetch(STATUS_ENDPOINT);
+                if (!r.ok) throw new Error("status error");
+                const js = await r.json();
+                return js;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        /* ============= Renderers ============= */
+        async function renderCoinsTable() {
+            const tbody = document.querySelector("#coinsTable tbody");
+            tbody.innerHTML = `<tr><td colspan="6" class="center">Loading…</td></tr>`;
+            const coins = await fetchCoins();
+            if (!coins) {
+                tbody.innerHTML = `<tr><td colspan="6" class="center">Error fetching coins</td></tr>`;
+                return;
+            }
+            // stats
+            const totalCoins = coins.length;
+            const totalMarket = coins.reduce((s, c) => s + (Number(c.market_cap) || 0), 0);
+            const totalVol = coins.reduce((s, c) => s + (Number(c.volume_24h) || 0), 0);
+            el('totalCoins').innerText = totalCoins;
+            el('totalMarket').innerText = formatMoney(totalMarket);
+            el('totalVolume').innerText = formatMoney(totalVol);
+
+            // last updated
+            if (coins.length > 0 && coins[0].fetch_time) el('lastUpdated').innerText = `Last updated: ${new Date(coins[0].fetch_time).toLocaleString()}`;
+
+            // rows
+            tbody.innerHTML = '';
+            for (const c of coins) {
+                const tr = document.createElement('tr');
+                const p24 = Number(c.percent_change_24h) || 0;
+                const p7 = Number(c.percent_change_7d) || 0;
+                tr.innerHTML = `
+      <td class="p-2">${c.cmc_rank ?? ''}</td>
+      <td class="p-2"><div style="font-weight:600">${c.name}</div><div class="small">${c.symbol}</div></td>
+      <td class="p-2" style="text-align:right">$${Number(c.price || 0).toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
+      <td class="p-2" style="text-align:right"><span class="${p24 >= 0 ? 'positive' : 'negative'}">${p24.toFixed(2)}%</span></td>
+      <td class="p-2" style="text-align:right"><span class="${p7 >= 0 ? 'positive' : 'negative'}">${p7.toFixed(2)}%</span></td>
+      <td class="p-2" style="text-align:right">${Number(c.market_cap || 0).toLocaleString()}</td>
+    `;
+                tbody.appendChild(tr);
+            }
+        }
+
+        let currentPlotData = null;
+        async function renderUmap() {
+            const wrap = el('umapPlot');
+            wrap.innerHTML = '';
+            const emb = await fetchEmbeddings();
+            if (!emb || emb.length === 0) {
+                wrap.innerHTML = '<div class="center">UMAP embeddings not available</div>';
+                return;
+            }
+            currentPlotData = emb;
+            const x = emb.map(e => e.umap_1);
+            const y = emb.map(e => e.umap_2);
+            const txt = emb.map(e => `${e.name} (${e.symbol})`);
+            const color = emb.map(e => e.cmc_rank);
+
+            const trace = {
+                x, y, text: txt,
+                mode: 'markers',
+                marker: { size: 8, color: color, colorscale: 'Plasma', colorbar: { title: 'CMC Rank' }, reversescale: true },
+                type: 'scattergl'
+            };
+            const layout = { autosize: true, margin: { l: 40, r: 20, t: 30, b: 40 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)' };
+            Plotly.newPlot('umapPlot', [trace], layout, { responsive: true });
+        }
+
+        async function renderPlotPreview() {
+            const url = await fetchPlot();
+            if (!url) {
+                el('plotImg').style.display = 'none';
+                el('plotFallback').style.display = 'block';
+                return;
+            }
+            el('plotImg').src = url + '?_=' + Date.now();
+            el('plotImg').style.display = 'block';
+            el('plotFallback').style.display = 'none';
+        }
+
+        /* ============= System Info ============= */
+        async function renderStatus() {
+            const s = await fetchStatus();
+            el('apiStatus').innerText = s ? 'OK' : 'DOWN';
+            // pipelineStatus: for now show lastUpdated
+            const coins = await fetchCoins();
+            el('pipelineStatus').innerText = coins && coins.length > 0 ? new Date(coins[0].fetch_time).toLocaleString() : '—';
+        }
+
+        /* ============= Bootstrapping ============= */
+        async function refreshAll() {
+            document.getElementById('refreshBtn').disabled = true;
+            await Promise.allSettled([renderCoinsTable(), renderUmap(), renderPlotPreview(), renderStatus()]);
+            document.getElementById('refreshBtn').disabled = false;
+        }
+
+        document.getElementById('refreshBtn').addEventListener('click', refreshAll);
+
+        // initial load
+        refreshAll();
+
+        // auto-refresh front-end every 10 hours to match MCP; you can change if needed
+        setInterval(refreshAll, 10 * 60 * 60 * 1000);
+    </script>
+
+</body>
+
+</html>
