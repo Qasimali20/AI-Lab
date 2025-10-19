@@ -5,7 +5,7 @@ pipeline:
   description: "Automated 10-hour ETL + Analytics pipeline for CoinMarketCap"
 
   schedule:
-    interval_hours: 10
+    interval_hours:  0.1667
 
   steps:
     - name: fetch_data
