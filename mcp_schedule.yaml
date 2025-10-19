@@ -1,0 +1,29 @@
+# mcp_schedule.yaml
+version: "1.0"
+pipeline:
+  name: coinmarketcap_analytics
+  description: "Automated 10-hour ETL + Analytics pipeline for CoinMarketCap"
+
+  schedule:
+    interval_hours: 10
+
+  steps:
+    - name: fetch_data
+      script: src/etl/fetch_cmc.py
+      description: "Fetch latest cryptocurrency data from CoinMarketCap API"
+
+    - name: preprocess_data
+      script: src/etl/preprocess.py
+      description: "Clean raw CSV data and update DuckDB"
+
+    - name: run_analytics
+      script: src/analytics/pca_umap.py
+      description: "Perform PCA + UMAP and save embeddings + plot"
+
+    - name: restart_api
+      script: src/utils/restart_api.py
+      description: "Restart FastAPI service to load updated data"
+
+    - name: log_status
+      script: src/utils/log_status.py
+      description: "Record pipeline completion timestamp"

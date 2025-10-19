@@ -1,0 +1,9 @@
+requests 
+pandas 
+duckdb 
+scikit-learn 
+umap-learn 
+fastapi 
+uvicorn 
+python-dotenv 
+matplotlib
