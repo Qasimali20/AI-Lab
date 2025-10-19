@@ -1,5 +1,5 @@
 """
-Perform PCA and UMAP on cleaned cryptocurrency data and visualize results.
+Perform PCA and UMAP on cleaned cryptocurrency data and append embeddings to DuckDB.
 """
 
 import duckdb
@@ -11,7 +11,7 @@ import umap
 import matplotlib.pyplot as plt
 import os
 
-DB_PATH = r"C:\Users\Administrator\Desktop\CMC-DB\data\coin_data.duckdb"
+DB_PATH = "data\coin_data.duckdb"
 PLOT_PATH = "data/umap_plot.png"
 
 def run_pca_umap():
@@ -21,13 +21,14 @@ def run_pca_umap():
     con.close()
     print(f"🔹 Loaded {len(df)} rows from DuckDB")
 
-    # Select numeric features for analysis
-    features = ["price", "market_cap", "volume_24h",
-                "percent_change_1h", "percent_change_24h", "percent_change_7d"]
+    features = [
+        "price", "market_cap", "volume_24h",
+        "percent_change_1h", "percent_change_24h", "percent_change_7d"
+    ]
     df = df.dropna(subset=features)
     X = df[features].values
 
-    # Scale data
+    # Standardize
     scaler = StandardScaler()
     X_scaled = scaler.fit_transform(X)
 
@@ -47,8 +48,10 @@ def run_pca_umap():
 
     # --- Visualization ---
     plt.figure(figsize=(10, 7))
-    scatter = plt.scatter(df["umap_1"], df["umap_2"],
-                          c=df["cmc_rank"], cmap="plasma", s=25, alpha=0.8)
+    scatter = plt.scatter(
+        df["umap_1"], df["umap_2"],
+        c=df["cmc_rank"], cmap="plasma", s=25, alpha=0.8
+    )
     plt.colorbar(scatter, label="CMC Rank")
     plt.title("UMAP projection of Cryptocurrencies", fontsize=14)
     plt.xlabel("UMAP Dimension 1")
@@ -57,15 +60,19 @@ def run_pca_umap():
 
     os.makedirs(os.path.dirname(PLOT_PATH), exist_ok=True)
     plt.savefig(PLOT_PATH, dpi=300)
-    plt.show()
+    plt.close()
     print(f"💾 Saved UMAP plot to {PLOT_PATH}")
 
-    # Optional: Save PCA + UMAP results back to DuckDB
+    # --- Append to DuckDB instead of overwrite ---
     con = duckdb.connect(DB_PATH)
-    con.execute("DROP TABLE IF EXISTS coins_embeddings")
-    con.execute("CREATE TABLE coins_embeddings AS SELECT * FROM df")
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS coins_embeddings AS SELECT * FROM df LIMIT 0
+    """)
+    con.register("temp_df", df)
+    con.execute("INSERT INTO coins_embeddings SELECT * FROM temp_df")
     con.close()
-    print("💾 Saved PCA + UMAP embeddings to DuckDB (table: coins_embeddings)")
+
+    print(f"💾 Appended {len(df)} new embeddings to DuckDB (table: coins_embeddings)")
 
 if __name__ == "__main__":
     run_pca_umap()
